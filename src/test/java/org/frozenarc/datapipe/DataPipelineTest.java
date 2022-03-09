@@ -8,7 +8,10 @@ import java.io.OutputStream;
 
 public class DataPipelineTest extends TestCase {
 
-    private static void transferData(InputStream inputStream, OutputStream outputStream) throws DataPipeException {
+    private static void transferData(InputStream inputStream, OutputStream outputStream, boolean throwError) throws DataPipeException {
+        if(throwError) {
+            throw new DataPipeException("Hello");
+        }
         try {
             int read;
             byte[] chunk = new byte[32];
@@ -22,14 +25,61 @@ public class DataPipelineTest extends TestCase {
     }
 
     public void testStream() throws DataPipeException {
-        InputStream inputStream = DataPipelineTest.class.getResourceAsStream("/sample.txt");
-        //noinspection ConstantConditions
+        InputStream fileStream = DataPipelineTest.class.getResourceAsStream("/sample.txt");
         DataPipeline.builder()
-                    .sourceWriter(outputStream -> transferData(inputStream, outputStream))
-                    .joiners(DataPipelineTest::transferData,
-                             DataPipelineTest::transferData)
-                    .sinkReader(inputStream1 -> transferData(inputStream1, System.out))
+                    .sourceWriter(outputStream -> transferData(fileStream, outputStream, false))
+                    .joiners((inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false),
+                             (inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false))
+                    .sinkReader(inputStream -> transferData(inputStream, System.out, false))
                     .build()
                     .stream();
     }
+
+    /*public void testExceptionInWriter() throws DataPipeException {
+        InputStream fileStream = DataPipelineTest.class.getResourceAsStream("/sample.txt");
+        //noinspection ConstantConditions
+        DataPipeline.builder()
+                    .sourceWriter(outputStream -> transferData(fileStream, outputStream, true))
+                    .joiners((inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false),
+                             (inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false))
+                    .sinkReader(inputStream -> transferData(inputStream, System.out, false))
+                    .build()
+                    .stream();
+    }
+
+    public void testExceptionInJoiner1() throws DataPipeException {
+        InputStream fileStream = DataPipelineTest.class.getResourceAsStream("/sample.txt");
+        //noinspection ConstantConditions
+        DataPipeline.builder()
+                    .sourceWriter(outputStream -> transferData(fileStream, outputStream, true))
+                    .joiners((inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, true),
+                             (inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false))
+                    .sinkReader(inputStream -> transferData(inputStream, System.out, false))
+                    .build()
+                    .stream();
+    }
+
+    public void testExceptionInJoiner2() throws DataPipeException {
+        InputStream fileStream = DataPipelineTest.class.getResourceAsStream("/sample.txt");
+        //noinspection ConstantConditions
+        DataPipeline.builder()
+                    .sourceWriter(outputStream -> transferData(fileStream, outputStream, false))
+                    .joiners((inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false),
+                             (inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, true))
+                    .sinkReader(inputStream -> transferData(inputStream, System.out, false))
+                    .build()
+                    .stream();
+    }
+
+    public void testExceptionInReader() throws DataPipeException {
+        InputStream fileStream = DataPipelineTest.class.getResourceAsStream("/sample.txt");
+        //noinspection ConstantConditions
+        DataPipeline.builder()
+                    .sourceWriter(outputStream -> transferData(fileStream, outputStream, false))
+                    .joiners((inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false),
+                             (inputStream, outputStream) -> DataPipelineTest.transferData(inputStream, outputStream, false))
+                    .sinkReader(inputStream -> transferData(inputStream, System.out, true))
+                    .build()
+                    .stream();
+    }*/
 }
