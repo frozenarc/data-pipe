@@ -46,6 +46,7 @@ public class DataPipeline {
                             = Arrays.asList(CompletableFuture.runAsync(() -> {
                                                 boolean error = false;
                                                 try {
+                                                    log.debug("OutputStream is started being written with source data");
                                                     writer.write(outputStream);
                                                     log.debug("OutputStream is written with source data");
                                                 } catch (Exception ex) {
@@ -54,7 +55,7 @@ public class DataPipeline {
                                                 } finally {
                                                     try {
                                                         outputStream.close();
-                                                        if(error) {
+                                                        if (error) {
                                                             inputStream.close();
                                                         }
                                                     } catch (IOException ex) {
@@ -65,6 +66,7 @@ public class DataPipeline {
                                             CompletableFuture.runAsync(() -> {
                                                 boolean error = false;
                                                 try {
+                                                    log.debug("InputStream is started being read for sink data");
                                                     reader.read(inputStream);
                                                     log.debug("InputStream is read for sink data");
                                                 } catch (Exception ex) {
@@ -72,7 +74,7 @@ public class DataPipeline {
                                                     throw new CompletionException(ex);
                                                 } finally {
                                                     try {
-                                                        if(error) {
+                                                        if (error) {
                                                             outputStream.close();
                                                         }
                                                         inputStream.close();
@@ -83,7 +85,6 @@ public class DataPipeline {
                                             }, executor));
 
                     log.debug("About to collect all futures and join");
-
                     for (CompletableFuture<Void> future : futures) {
                         future.exceptionally(ex -> {
                             exceptions.add(ex);
@@ -93,7 +94,7 @@ public class DataPipeline {
 
                     for (Throwable ex : exceptions) {
                         Throwable mainCause = getMainClause(ex);
-                        if(mainCause instanceof DataPipeException) {
+                        if (mainCause instanceof DataPipeException) {
                             throw new DataPipeException(ex);
                         }
                     }
@@ -113,7 +114,7 @@ public class DataPipeline {
         }
 
         private static Throwable getMainClause(Throwable ex) {
-            if(ex.getCause() == null) {
+            if (ex.getCause() == null) {
                 return ex;
             } else {
                 return getMainClause(ex.getCause());

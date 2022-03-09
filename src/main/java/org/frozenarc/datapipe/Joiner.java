@@ -1,6 +1,5 @@
 package org.frozenarc.datapipe;
 
-import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 
