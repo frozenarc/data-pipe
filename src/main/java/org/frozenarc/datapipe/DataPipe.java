@@ -172,14 +172,6 @@ public class DataPipe {
                                           executor);
     }
 
-    /*private Throwable getCause(Throwable ex) {
-        if (ex instanceof DataPipeException && ex.getCause() != null) {
-            return getCause(ex.getCause());
-        } else {
-            return ex;
-        }
-    }*/
-
     public static DataPipe.Builder builder() {
         return new DataPipe.Builder();
     }
