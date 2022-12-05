@@ -5,6 +5,7 @@ import org.frozenarc.datapipe.PipeStreamException;
 /**
  * Author: mpanchal
  * Date: 2022-12-03 16:02
+ * The exception can be thrown from joiner stage.
  */
 public class JoinException extends PipeStreamException {
 

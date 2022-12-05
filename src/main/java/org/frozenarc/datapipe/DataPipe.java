@@ -19,6 +19,9 @@ import java.util.function.Consumer;
 /**
  * Author: mpanchal
  * Date: 2022-12-03 15:28
+ * Main class to work with.
+ * builder() method to be used to create instance.
+ * steamWriter(), addStreamJoiner(), streamReader() to be used to create whole data pipeline to process data from source to sink
  */
 public class DataPipe {
 
@@ -34,10 +37,19 @@ public class DataPipe {
         this.reader = reader;
     }
 
+    /**
+     * Call the method to start streaming data from source to sink
+     * @throws DataPipeException is main exception which will contains main cause as well as suppressed exceptions from other stages
+     */
     public void doStream() throws DataPipeException {
         doStream(Executors.newFixedThreadPool(joiners.length + 2));
     }
 
+    /**
+     * Call the method to start streaming data from source to sink with customized executor
+     * @param executor ExecutorService
+     * @throws DataPipeException is main exception which will contains main cause as well as suppressed exceptions from other stages
+     */
     public void doStream(ExecutorService executor) throws DataPipeException {
         List<PipedStream> pipedStreams = new ArrayList<>();
         List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
@@ -80,7 +92,7 @@ public class DataPipe {
         }
     }
 
-    public CompletableFuture<Void> writerFuture(StreamWriter writer,
+    private CompletableFuture<Void> writerFuture(StreamWriter writer,
                                                 PipedStream pipedStream,
                                                 Executor executor,
                                                 Consumer<Throwable> expConsumer) {
@@ -109,7 +121,7 @@ public class DataPipe {
                                           executor);
     }
 
-    public CompletableFuture<Void> readerFuture(StreamReader reader,
+    private CompletableFuture<Void> readerFuture(StreamReader reader,
                                                 PipedStream pipedStream,
                                                 Executor executor,
                                                 Consumer<Throwable> expConsumer) {
@@ -138,7 +150,7 @@ public class DataPipe {
                                           executor);
     }
 
-    public CompletableFuture<Void> joinerFuture(StreamJoiner joiner,
+    private CompletableFuture<Void> joinerFuture(StreamJoiner joiner,
                                                 PipedStream inputPipedStream,
                                                 PipedStream outputPipedStream,
                                                 Executor executor,
@@ -172,31 +184,57 @@ public class DataPipe {
                                           executor);
     }
 
+    /**
+     * creates builder instance
+     * @return DataPipe.Builder
+     */
     public static DataPipe.Builder builder() {
         return new DataPipe.Builder();
     }
 
+    /**
+     * Builder class
+     */
     public static class Builder {
         private StreamWriter writer;
 
         private final List<StreamJoiner> joiners = new ArrayList<>();
         private StreamReader reader;
 
+        /**
+         * To be used to set StreamWriter
+         * @param writer StreamWriter
+         * @return DataPipe.Builder
+         */
         public DataPipe.Builder streamWriter(StreamWriter writer) {
             this.writer = writer;
             return this;
         }
 
+        /**
+         * To be used to add StreamJoiner
+         * @param joiner StreamJoiner
+         * @return DataPipe.Builder
+         */
         public DataPipe.Builder addStreamJoiner(StreamJoiner joiner) {
             joiners.add(joiner);
             return this;
         }
 
+        /**
+         * To be used to set StreamReader
+         * @param reader StreamReader
+         * @return DataPipe.Builder
+         */
         public DataPipe.Builder streamReader(StreamReader reader) {
             this.reader = reader;
             return this;
         }
 
+        /**
+         * builds DataPipe instance
+         * @return DataPipe
+         */
         public DataPipe build() {
             return new DataPipe(writer, joiners.toArray(new StreamJoiner[]{}), reader);
         }
