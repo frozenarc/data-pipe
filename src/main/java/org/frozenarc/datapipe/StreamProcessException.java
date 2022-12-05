@@ -5,17 +5,17 @@ package org.frozenarc.datapipe;
  * Date: 2022-12-03 16:17
  * Base exception for any individual exception from writer, joiner and reader stage.
  */
-public class PipeStreamException extends Exception {
+public class StreamProcessException extends Exception {
 
-    public PipeStreamException(String message) {
+    public StreamProcessException(String message) {
         super(message);
     }
 
-    public PipeStreamException(String message, Throwable cause) {
+    public StreamProcessException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public PipeStreamException(Throwable cause) {
+    public StreamProcessException(Throwable cause) {
         super(cause);
     }
 }

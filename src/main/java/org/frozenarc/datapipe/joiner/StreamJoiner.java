@@ -14,7 +14,8 @@ public interface StreamJoiner {
 
     /**
      * read, process and write data inside the method.
-     * @param inputStream InputStream
+     *
+     * @param inputStream  InputStream
      * @param outputStream OutputStream
      * @throws JoinException can be thrown during the stage.
      */

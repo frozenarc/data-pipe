@@ -39,6 +39,7 @@ public class DataPipe {
 
     /**
      * Call the method to start streaming data from source to sink
+     *
      * @throws DataPipeException is main exception which will contains main cause as well as suppressed exceptions from other stages
      */
     public void doStream() throws DataPipeException {
@@ -47,6 +48,7 @@ public class DataPipe {
 
     /**
      * Call the method to start streaming data from source to sink with customized executor
+     *
      * @param executor ExecutorService
      * @throws DataPipeException is main exception which will contains main cause as well as suppressed exceptions from other stages
      */
@@ -93,9 +95,9 @@ public class DataPipe {
     }
 
     private CompletableFuture<Void> writerFuture(StreamWriter writer,
-                                                PipedStream pipedStream,
-                                                Executor executor,
-                                                Consumer<Throwable> expConsumer) {
+                                                 PipedStream pipedStream,
+                                                 Executor executor,
+                                                 Consumer<Throwable> expConsumer) {
 
         return CompletableFuture.runAsync(() -> {
                                               boolean error = false;
@@ -122,9 +124,9 @@ public class DataPipe {
     }
 
     private CompletableFuture<Void> readerFuture(StreamReader reader,
-                                                PipedStream pipedStream,
-                                                Executor executor,
-                                                Consumer<Throwable> expConsumer) {
+                                                 PipedStream pipedStream,
+                                                 Executor executor,
+                                                 Consumer<Throwable> expConsumer) {
 
         return CompletableFuture.runAsync(() -> {
                                               boolean error = false;
@@ -151,10 +153,10 @@ public class DataPipe {
     }
 
     private CompletableFuture<Void> joinerFuture(StreamJoiner joiner,
-                                                PipedStream inputPipedStream,
-                                                PipedStream outputPipedStream,
-                                                Executor executor,
-                                                Consumer<Throwable> expConsumer) {
+                                                 PipedStream inputPipedStream,
+                                                 PipedStream outputPipedStream,
+                                                 Executor executor,
+                                                 Consumer<Throwable> expConsumer) {
 
         return CompletableFuture.runAsync(() -> {
                                               boolean error = false;
@@ -186,6 +188,7 @@ public class DataPipe {
 
     /**
      * creates builder instance
+     *
      * @return DataPipe.Builder
      */
     public static DataPipe.Builder builder() {
@@ -203,6 +206,7 @@ public class DataPipe {
 
         /**
          * To be used to set StreamWriter
+         *
          * @param writer StreamWriter
          * @return DataPipe.Builder
          */
@@ -213,6 +217,7 @@ public class DataPipe {
 
         /**
          * To be used to add StreamJoiner
+         *
          * @param joiner StreamJoiner
          * @return DataPipe.Builder
          */
@@ -223,6 +228,7 @@ public class DataPipe {
 
         /**
          * To be used to set StreamReader
+         *
          * @param reader StreamReader
          * @return DataPipe.Builder
          */
@@ -233,6 +239,7 @@ public class DataPipe {
 
         /**
          * builds DataPipe instance
+         *
          * @return DataPipe
          */
         public DataPipe build() {

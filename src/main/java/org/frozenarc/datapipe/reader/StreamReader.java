@@ -11,6 +11,7 @@ public interface StreamReader {
 
     /**
      * The stage reads from inputStream and send data to sink.
+     *
      * @param inputStream InputStream
      * @throws ReadException can be thrown during the stage.
      */

@@ -11,6 +11,7 @@ public interface StreamWriter {
 
     /**
      * The stage writes data to outputStream from source.
+     *
      * @param outputStream OutputStream
      * @throws WriteException can be thrown during the stage.
      */

@@ -1,13 +1,13 @@
 package org.frozenarc.datapipe.writer;
 
-import org.frozenarc.datapipe.PipeStreamException;
+import org.frozenarc.datapipe.StreamProcessException;
 
 /**
  * Author: mpanchal
  * Date: 2022-12-03 16:03
  * The exception can be thrown during writing stage.
  */
-public class WriteException extends PipeStreamException {
+public class WriteException extends StreamProcessException {
 
     public WriteException(String message) {
         super(message);

@@ -1,13 +1,13 @@
 package org.frozenarc.datapipe.joiner;
 
-import org.frozenarc.datapipe.PipeStreamException;
+import org.frozenarc.datapipe.StreamProcessException;
 
 /**
  * Author: mpanchal
  * Date: 2022-12-03 16:02
  * The exception can be thrown from joiner stage.
  */
-public class JoinException extends PipeStreamException {
+public class JoinException extends StreamProcessException {
 
     public JoinException(String message) {
         super(message);
