@@ -2,7 +2,6 @@ package org.frozenarc.datapipe;
 
 import org.frozenarc.datapipe.joiner.ParallelStreamJoiner;
 import org.frozenarc.datapipe.reader.ParallelStreamReader;
-import org.frozenarc.datapipe.reader.StreamReader;
 import org.frozenarc.datapipe.writer.ParallelStreamWriter;
 
 import java.util.ArrayList;
@@ -14,33 +13,37 @@ import java.util.List;
  */
 public class ParallelDataPipe {
 
-    private int source;
-    private ParallelStreamReader reader;
-    private ParallelStreamJoiner[] joiners;
     private ParallelStreamWriter writer;
+    private ParallelStreamJoiner[] joiners;
+    private ParallelStreamReader reader;
 
-    private int sink;
-
-    private ParallelDataPipe(int source, ParallelStreamReader reader, ParallelStreamJoiner[] joiners, ParallelStreamWriter writer, int sink) {
-        this.source = source;
-        this.reader = reader;
-        this.joiners = joiners;
+    private ParallelDataPipe(ParallelStreamWriter writer, ParallelStreamJoiner[] joiners, ParallelStreamReader reader) {
         this.writer = writer;
-        this.sink = sink;
+        this.joiners = joiners;
+        this.reader = reader;
     }
 
     public void doStream() {
-        writer.
+        int count = writer.getStreamWriterCount();
+        for(ParallelStreamJoiner joiner : joiners) {
+            count = count + joiner.getReadingJoinerCount() + joiner.getWritingJoinerCount();
+        }
+        count = count + reader.getStreamReaderCount();
+
+
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {
-        private StreamReader[] readers;
-        private List<ParallelStreamJoiner> joiners = new ArrayList<>();
         private ParallelStreamWriter writer;
+        private List<ParallelStreamJoiner> joiners = new ArrayList<>();
+        private ParallelStreamReader reader;
 
-
-        public ParallelDataPipe.Builder reader(StreamReader ... readers) {
-            this.readers = readers;
+        public ParallelDataPipe.Builder writer(ParallelStreamWriter writer) {
+            this.writer = writer;
             return this;
         }
 
@@ -49,13 +52,23 @@ public class ParallelDataPipe {
             return this;
         }
 
-        public ParallelDataPipe.Builder writer(ParallelStreamWriter writer) {
-            this.writer = writer;
+        public ParallelDataPipe.Builder reader(ParallelStreamReader reader) {
+            this.reader = reader;
             return this;
         }
 
-        public ParallelDataPipe build(int source, int sink) {
-            return new ParallelDataPipe(source, reader, joiners.toArray(new ParallelStreamJoiner[]{}), writer, sink);
+        public ParallelDataPipe build() {
+            return new ParallelDataPipe(writer, joiners.toArray(new ParallelStreamJoiner[]{}), reader);
         }
     }
 }
+/*
+    ParallelDataPipe.builder()
+                    .writer(ParallelStreamWriter.streamWriters(outputStream -> {}, outputStream -> {}, outputStream -> {}).build())
+                    .joiner(ParallelStreamJoiner.readingJoiners((inputSteam, queue[]) -> {}, (inputSteam, queue[]) -> {}, (inputSteam, queue[]) -> {})
+                                                .writingJoiners((queue, outputStream) -> {}, (queue, outputStream) -> {})
+                                                .build())
+                    .reader(ParallelStreamReader.streamReaders(inputStream -> {},inputStream -> {}).build())
+                    .build();
+
+ */
