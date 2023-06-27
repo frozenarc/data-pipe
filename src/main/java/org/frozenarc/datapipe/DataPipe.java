@@ -43,7 +43,16 @@ public class DataPipe {
      * @throws DataPipeException is main exception which will contains main cause as well as suppressed exceptions from other stages
      */
     public void doStream() throws DataPipeException {
-        doStream(Executors.newFixedThreadPool(joiners.length + 2));
+        ExecutorService executor = null;
+        try {
+            executor = Executors.newFixedThreadPool(joiners.length + 2);
+            doStream(executor);
+        } finally {
+            if (executor != null) {
+                executor.shutdown();
+                log.debug("Executor has been shutdown");
+            }
+        }
     }
 
     /**
@@ -72,8 +81,12 @@ public class DataPipe {
             }
             futures.add(readerFuture(reader, pipedStreams.get(i), executor, exceptions::add));
 
+            log.debug("all components are set.. streaming is started");
+
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[]{}))
                              .join();
+
+            log.debug("streaming is done");
 
             if (exceptions.size() > 0) {
                 DataPipeException exp = new DataPipeException(exceptions.get(0));
@@ -83,14 +96,13 @@ public class DataPipe {
                 throw exp;
             }
 
+            log.debug("doStream end");
+
         } finally {
-            try {
-                for (PipedStream pipedStream : pipedStreams) {
-                    pipedStream.close();
-                }
-            } finally {
-                executor.shutdown();
+            for (PipedStream pipedStream : pipedStreams) {
+                pipedStream.close();
             }
+            log.debug("all piped streams are closed");
         }
     }
 
@@ -105,6 +117,8 @@ public class DataPipe {
                                                   log.debug("StreamWriter: start writing to output stream");
                                                   writer.writeTo(pipedStream.getOutputStream());
                                                   log.debug("StreamWriter: written to output stream");
+                                                  pipedStream.getOutputStream().flush();
+                                                  log.debug("StreamWriter: output stream flushed");
                                               } catch (Exception ex) {
                                                   error = true;
                                                   expConsumer.accept(ex);
@@ -116,7 +130,7 @@ public class DataPipe {
                                                           pipedStream.getInputStream().close();
                                                       }
                                                   } catch (IOException ex) {
-                                                      ex.printStackTrace();
+                                                      log.error("StreamWriter: Error during closing streams", ex);
                                                   }
                                               }
                                           },
@@ -145,7 +159,7 @@ public class DataPipe {
                                                       }
                                                       pipedStream.getInputStream().close();
                                                   } catch (IOException ex) {
-                                                      ex.printStackTrace();
+                                                      log.error("StreamReader: Error during closing streams", ex);
                                                   }
                                               }
                                           },
@@ -164,6 +178,8 @@ public class DataPipe {
                                                   log.debug("StreamJoiner: start reading from input stream and writing to output stream");
                                                   joiner.join(inputPipedStream.getInputStream(), outputPipedStream.getOutputStream());
                                                   log.debug("StreamJoiner: read from input stream and written to output stream");
+                                                  outputPipedStream.getOutputStream().flush();
+                                                  log.debug("StreamJoiner: output stream flushed");
                                               } catch (Exception ex) {
                                                   error = true;
                                                   expConsumer.accept(ex);
@@ -179,7 +195,7 @@ public class DataPipe {
                                                           outputPipedStream.getInputStream().close();
                                                       }
                                                   } catch (IOException ex) {
-                                                      ex.printStackTrace();
+                                                      log.error("StreamJoiner: Error during closing streams", ex);
                                                   }
                                               }
                                           },
@@ -191,8 +207,8 @@ public class DataPipe {
      *
      * @return DataPipe.Builder
      */
-    public static DataPipe.Builder builder() {
-        return new DataPipe.Builder();
+    public static Builder builder() {
+        return new Builder();
     }
 
     /**
@@ -210,7 +226,7 @@ public class DataPipe {
          * @param writer StreamWriter
          * @return DataPipe.Builder
          */
-        public DataPipe.Builder streamWriter(StreamWriter writer) {
+        public Builder streamWriter(StreamWriter writer) {
             this.writer = writer;
             return this;
         }
@@ -221,7 +237,7 @@ public class DataPipe {
          * @param joiner StreamJoiner
          * @return DataPipe.Builder
          */
-        public DataPipe.Builder addStreamJoiner(StreamJoiner joiner) {
+        public Builder addStreamJoiner(StreamJoiner joiner) {
             joiners.add(joiner);
             return this;
         }
@@ -232,7 +248,7 @@ public class DataPipe {
          * @param reader StreamReader
          * @return DataPipe.Builder
          */
-        public DataPipe.Builder streamReader(StreamReader reader) {
+        public Builder streamReader(StreamReader reader) {
             this.reader = reader;
             return this;
         }
