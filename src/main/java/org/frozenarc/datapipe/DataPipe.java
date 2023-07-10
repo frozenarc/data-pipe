@@ -117,8 +117,6 @@ public class DataPipe {
                                                   log.debug("StreamWriter: start writing to output stream");
                                                   writer.writeTo(pipedStream.getOutputStream());
                                                   log.debug("StreamWriter: written to output stream");
-                                                  pipedStream.getOutputStream().flush();
-                                                  log.debug("StreamWriter: output stream flushed");
                                               } catch (Exception ex) {
                                                   error = true;
                                                   expConsumer.accept(ex);
@@ -178,8 +176,6 @@ public class DataPipe {
                                                   log.debug("StreamJoiner: start reading from input stream and writing to output stream");
                                                   joiner.join(inputPipedStream.getInputStream(), outputPipedStream.getOutputStream());
                                                   log.debug("StreamJoiner: read from input stream and written to output stream");
-                                                  outputPipedStream.getOutputStream().flush();
-                                                  log.debug("StreamJoiner: output stream flushed");
                                               } catch (Exception ex) {
                                                   error = true;
                                                   expConsumer.accept(ex);
