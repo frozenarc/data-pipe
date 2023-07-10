@@ -50,6 +50,28 @@ class PipedStream {
         }
     }
 
+    public void closeAfterWrite(boolean error)  {
+        try {
+            outputStream.close();
+            if (error) {
+                inputStream.close();
+            }
+        } catch (IOException ex) {
+            log.error("StreamWriter: Error during closing streams", ex);
+        }
+    }
+
+    public void closeAfterRead(boolean error) {
+        try {
+            if (error) {
+                outputStream.close();
+            }
+            inputStream.close();
+        } catch (IOException ex) {
+            log.error("StreamReader: Error during closing streams", ex);
+        }
+    }
+
     public PipedOutputStream getOutputStream() {
         return outputStream;
     }

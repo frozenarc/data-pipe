@@ -6,7 +6,6 @@ import org.frozenarc.datapipe.writer.StreamWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,6 +22,7 @@ import java.util.function.Consumer;
  * builder() method to be used to create instance.
  * steamWriter(), addStreamJoiner(), streamReader() to be used to create whole data pipeline to process data from source to sink
  */
+@SuppressWarnings("unused")
 public class DataPipe {
 
     private static final Logger log = LoggerFactory.getLogger(DataPipe.class);
@@ -122,14 +122,7 @@ public class DataPipe {
                                                   expConsumer.accept(ex);
                                                   log.error("StreamWriter: Error during writing to output stream", ex);
                                               } finally {
-                                                  try {
-                                                      pipedStream.getOutputStream().close();
-                                                      if (error) {
-                                                          pipedStream.getInputStream().close();
-                                                      }
-                                                  } catch (IOException ex) {
-                                                      log.error("StreamWriter: Error during closing streams", ex);
-                                                  }
+                                                  pipedStream.closeAfterWrite(error);
                                               }
                                           },
                                           executor);
@@ -151,14 +144,7 @@ public class DataPipe {
                                                   expConsumer.accept(ex);
                                                   log.error("StreamReader: Error during reading from input stream", ex);
                                               } finally {
-                                                  try {
-                                                      if (error) {
-                                                          pipedStream.getOutputStream().close();
-                                                      }
-                                                      pipedStream.getInputStream().close();
-                                                  } catch (IOException ex) {
-                                                      log.error("StreamReader: Error during closing streams", ex);
-                                                  }
+                                                  pipedStream.closeAfterRead(error);
                                               }
                                           },
                                           executor);
@@ -181,18 +167,8 @@ public class DataPipe {
                                                   expConsumer.accept(ex);
                                                   log.error("StreamJoiner: Error during joining of input stream and output stream", ex);
                                               } finally {
-                                                  try {
-                                                      if (error) {
-                                                          inputPipedStream.getOutputStream().close();
-                                                      }
-                                                      inputPipedStream.getInputStream().close();
-                                                      outputPipedStream.getOutputStream().close();
-                                                      if (error) {
-                                                          outputPipedStream.getInputStream().close();
-                                                      }
-                                                  } catch (IOException ex) {
-                                                      log.error("StreamJoiner: Error during closing streams", ex);
-                                                  }
+                                                  inputPipedStream.closeAfterRead(error);
+                                                  outputPipedStream.closeAfterWrite(error);
                                               }
                                           },
                                           executor);
