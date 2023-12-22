@@ -1,14 +1,21 @@
 package org.frozenarc.datapipe;
 
+import org.frozenarc.datapipe.joiner.JoinerComponents;
+import org.frozenarc.datapipe.joiner.JoinerFuture;
 import org.frozenarc.datapipe.joiner.StreamJoiner;
+import org.frozenarc.datapipe.reader.ReaderComponents;
+import org.frozenarc.datapipe.reader.ReaderFuture;
 import org.frozenarc.datapipe.reader.StreamReader;
 import org.frozenarc.datapipe.writer.StreamWriter;
+import org.frozenarc.datapipe.writer.WriterComponents;
+import org.frozenarc.datapipe.writer.WriterFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -27,14 +34,16 @@ public class DataPipe {
 
     private static final Logger log = LoggerFactory.getLogger(DataPipe.class);
 
-    private final StreamWriter writer;
-    private final StreamJoiner[] joiners;
-    private final StreamReader reader;
+    private final WriterComponents writerComps;
+    private final JoinerComponents[] joinersComps;
+    private final ReaderComponents readerComps;
 
-    private DataPipe(StreamWriter writer, StreamJoiner[] joiners, StreamReader reader) {
-        this.writer = writer;
-        this.joiners = joiners;
-        this.reader = reader;
+    private DataPipe(WriterComponents writerComps,
+                     JoinerComponents[] joinersComps,
+                     ReaderComponents readerComps) {
+        this.writerComps = writerComps;
+        this.joinersComps = joinersComps;
+        this.readerComps = readerComps;
     }
 
     /**
@@ -45,7 +54,7 @@ public class DataPipe {
     public void doStream() throws DataPipeException {
         ExecutorService executor = null;
         try {
-            executor = Executors.newFixedThreadPool(joiners.length + 2);
+            executor = Executors.newFixedThreadPool(joinersComps.length + 2);
             doStream(executor);
         } finally {
             if (executor != null) {
@@ -63,23 +72,35 @@ public class DataPipe {
      */
     public void doStream(ExecutorService executor) throws DataPipeException {
         List<PipedStream> pipedStreams = new ArrayList<>();
-        List<Throwable> exceptions = Collections.synchronizedList(new ArrayList<>());
+        List<Exception> exceptions = Collections.synchronizedList(new ArrayList<>());
         try {
-            for (int i = 0; i < joiners.length + 1; i++) {
+            for (int i = 0; i < joinersComps.length + 1; i++) {
                 pipedStreams.add(new PipedStream());
             }
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             int i = 0;
-            futures.add(writerFuture(writer, pipedStreams.get(i), executor, exceptions::add));
-            while (i < joiners.length) {
-                futures.add(joinerFuture(joiners[i],
-                                         pipedStreams.get(i),
+            futures.add(writerFuture(pipedStreams.get(i),
+                                     executor)
+                                .getFuture(writerComps.getWriter(),
+                                           Optional.ofNullable(writerComps.getExpConsumer())
+                                                   .map(consumer -> getCombinedConsumer(exceptions, consumer))
+                                                   .orElse(exceptions::add)));
+            while (i < joinersComps.length) {
+                futures.add(joinerFuture(pipedStreams.get(i),
                                          pipedStreams.get(i + 1),
-                                         executor,
-                                         exceptions::add));
+                                         executor)
+                                    .getFuture(joinersComps[i].getJoiner(),
+                                               Optional.ofNullable(joinersComps[i].getExpConsumer())
+                                                       .map(consumer -> getCombinedConsumer(exceptions, consumer))
+                                                       .orElse(exceptions::add)));
                 i++;
             }
-            futures.add(readerFuture(reader, pipedStreams.get(i), executor, exceptions::add));
+            futures.add(readerFuture(pipedStreams.get(i),
+                                     executor)
+                                .getFuture(readerComps.getReader(),
+                                           Optional.ofNullable(readerComps.getExpConsumer())
+                                                   .map(consumer -> getCombinedConsumer(exceptions, consumer))
+                                                   .orElse(exceptions::add)));
 
             log.debug("all components are set.. streaming is started");
 
@@ -88,7 +109,7 @@ public class DataPipe {
 
             log.debug("streaming is done");
 
-            if (exceptions.size() > 0) {
+            if (!exceptions.isEmpty()) {
                 DataPipeException exp = new DataPipeException(exceptions.get(0));
                 for (int j = 1; j < exceptions.size(); j++) {
                     exp.addSuppressed(exceptions.get(j));
@@ -101,15 +122,15 @@ public class DataPipe {
         } finally {
             for (PipedStream pipedStream : pipedStreams) {
                 pipedStream.close();
+                log.debug("all piped streams are closed");
             }
-            log.debug("all piped streams are closed");
         }
     }
 
-    private CompletableFuture<Void> writerFuture(StreamWriter writer,
-                                                 PipedStream pipedStream,
+    private CompletableFuture<Void> writerFuture(PipedStream pipedStream,
                                                  Executor executor,
-                                                 Consumer<Throwable> expConsumer) {
+                                                 StreamWriter writer,
+                                                 Consumer<Exception> expConsumer) {
 
         return CompletableFuture.runAsync(() -> {
                                               boolean error = false;
@@ -128,10 +149,14 @@ public class DataPipe {
                                           executor);
     }
 
-    private CompletableFuture<Void> readerFuture(StreamReader reader,
-                                                 PipedStream pipedStream,
+    private WriterFuture writerFuture(PipedStream pipedStream, Executor executor) {
+        return (writer, expConsumer) -> writerFuture(pipedStream, executor, writer, expConsumer);
+    }
+
+    private CompletableFuture<Void> readerFuture(PipedStream pipedStream,
                                                  Executor executor,
-                                                 Consumer<Throwable> expConsumer) {
+                                                 StreamReader reader,
+                                                 Consumer<Exception> expConsumer) {
 
         return CompletableFuture.runAsync(() -> {
                                               boolean error = false;
@@ -150,11 +175,15 @@ public class DataPipe {
                                           executor);
     }
 
-    private CompletableFuture<Void> joinerFuture(StreamJoiner joiner,
-                                                 PipedStream inputPipedStream,
+    private ReaderFuture readerFuture(PipedStream pipedStream, Executor executor) {
+        return (reader, expConsumer) -> readerFuture(pipedStream, executor, reader, expConsumer);
+    }
+
+    private CompletableFuture<Void> joinerFuture(PipedStream inputPipedStream,
                                                  PipedStream outputPipedStream,
                                                  Executor executor,
-                                                 Consumer<Throwable> expConsumer) {
+                                                 StreamJoiner joiner,
+                                                 Consumer<Exception> expConsumer) {
 
         return CompletableFuture.runAsync(() -> {
                                               boolean error = false;
@@ -174,6 +203,17 @@ public class DataPipe {
                                           executor);
     }
 
+    private JoinerFuture joinerFuture(PipedStream inputPipedStream, PipedStream outputPipedStream, Executor executor) {
+        return (joiner, expConsumer) -> joinerFuture(inputPipedStream, outputPipedStream, executor, joiner, expConsumer);
+    }
+
+    private Consumer<Exception> getCombinedConsumer(List<Exception> exceptions, Consumer<Exception> consumer) {
+        return exp -> {
+            exceptions.add(exp);
+            consumer.accept(exp);
+        };
+    }
+
     /**
      * creates builder instance
      *
@@ -187,10 +227,12 @@ public class DataPipe {
      * Builder class
      */
     public static class Builder {
-        private StreamWriter writer;
+        private WriterComponents writerComps;
 
-        private final List<StreamJoiner> joiners = new ArrayList<>();
-        private StreamReader reader;
+        private final List<JoinerComponents> joinerComps = new ArrayList<>();
+
+        private ReaderComponents readerComps;
+
 
         /**
          * To be used to set StreamWriter
@@ -199,7 +241,12 @@ public class DataPipe {
          * @return DataPipe.Builder
          */
         public Builder streamWriter(StreamWriter writer) {
-            this.writer = writer;
+            this.writerComps = new WriterComponents(writer, null);
+            return this;
+        }
+
+        public Builder streamWriter(StreamWriter writer, Consumer<Exception> expConsumer) {
+            this.writerComps = new WriterComponents(writer, expConsumer);
             return this;
         }
 
@@ -210,7 +257,12 @@ public class DataPipe {
          * @return DataPipe.Builder
          */
         public Builder addStreamJoiner(StreamJoiner joiner) {
-            joiners.add(joiner);
+            this.joinerComps.add(new JoinerComponents(joiner, null));
+            return this;
+        }
+
+        public Builder addStreamJoiner(StreamJoiner joiner, Consumer<Exception> expConsumer) {
+            this.joinerComps.add(new JoinerComponents(joiner, expConsumer));
             return this;
         }
 
@@ -221,7 +273,12 @@ public class DataPipe {
          * @return DataPipe.Builder
          */
         public Builder streamReader(StreamReader reader) {
-            this.reader = reader;
+            this.readerComps = new ReaderComponents(reader, null);
+            return this;
+        }
+
+        public Builder streamReader(StreamReader reader, Consumer<Exception> expConsumer) {
+            this.readerComps = new ReaderComponents(reader, expConsumer);
             return this;
         }
 
@@ -231,7 +288,9 @@ public class DataPipe {
          * @return DataPipe
          */
         public DataPipe build() {
-            return new DataPipe(writer, joiners.toArray(new StreamJoiner[]{}), reader);
+            return new DataPipe(writerComps,
+                                joinerComps.toArray(new JoinerComponents[]{}),
+                                readerComps);
         }
     }
 }
